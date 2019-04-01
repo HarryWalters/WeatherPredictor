@@ -1,0 +1,273 @@
+---
+title: Introduction to Data Science Assignment Version 4; Harry Walters (1916 6700),
+  Gabriel Muller
+output:
+  word_document: default
+  html_notebook: default
+---
+
+Weather predictor
+Recorded day to day data from the beureau of meteorology (BOM) for Whiteman Park
+
+Our data will refined, as we have missing values
+
+OUr data can be used to account for draughts
+
+```{r}
+
+# This loads the BOM data into RStudio as a .csv
+library(readr)
+WhitemanPark <- read_csv("C:/Users/Harry Walters/Desktop/Curtin/Year 2/Semester 1/STAT1003/Assignment/Whiteman Park Weather Data/IDCJAC0009_009263_1800_Data.csv")
+```
+
+```{r}
+# 300 missing values?! heck!!!
+sum(is.na(WhitemanPark$`Rainfall amount (millimetres)`))
+
+# NOTE: each reading is independant of one another
+plot(is.na(WhitemanPark$`Rainfall amount (millimetres)`))
+
+# How many missing rainfall entries are there for each year?
+
+# a histogram that finds which rainfall amounts for any year are missing
+
+hist(WhitemanPark$Year[which(is.na(WhitemanPark$`Rainfall amount (millimetres)`)==TRUE)], main = 'Missing Rainfall Values for Each Year', xlab = 'Year', ylab = 'Number of missing days')
+
+table(WhitemanPark$Year[which(is.na(WhitemanPark$`Rainfall amount (millimetres)`)==TRUE)])
+```
+
+From the table above, we can see that 2014 and 2016 have only 2 missing values. This large amount of data for these two years can give us a strong training and test set.
+We could, in theory train on the 2014 data and test on the 2016
+
+We will now use a for loop to write the last n days of data to n columns for any given day.
+This will mean that our dataset will be 2n observations smaller (we are 'chopping off' n days from the head and tail)
+
+The lag days can be done before cleaning the data; we can just set an NA value to the last *given* day. Alternatively, we can set the lag to NA if there isn't a value for a previous day
+
+```{r}
+# Writing the year, the last n days of data, the mean of those n days, the current day, and a rain state boolean
+
+# This part of the project is based on Workshop 10; created by Aloke
+# setting the lag columns and mean to zero
+
+# unfortunately, the lag() function doesn't pad the head and tail with NA; as it is, it has no effect on the data frame
+
+# as a result, the lags will be written in a seperate code chunk
+
+# Note that we can also set the repeated value to NA; rep(NA)
+
+WP.lag <- data.frame(Year = WhitemanPark$Year, Month = WhitemanPark$Month, Day = WhitemanPark$Day, Today = WhitemanPark$`Rainfall amount (millimetres)`, Lag1 = rep(0), Lag2 = rep(0), Lag3 = rep(0), Lag4 = rep(0), Lag5 = rep(0), Lag6 = rep(0), Lag7 = rep(0), MeanLag = rep(0), MedLag = rep(0), RainState = (WhitemanPark$`Rainfall amount (millimetres)`> 0))
+
+# updated draft version
+#WP.lag <- data.frame(Year = WhitemanPark$Year, Month = WhitemanPark$Month, Day = WhitemanPark$Day, Today = WhitemanPark$`Rainfall amount (millimetres)`, Lag1 = rep(0), Lag2 = rep(0), Lag3 = rep(0), Lag4 = rep(0), Lag5 = rep(0), Lag6 = rep(0), Lag7 = rep(0), MeanLag = rep(0), MedLag = median(as.numeric(WP.lag[i,5:11]),na.rm=TRUE), RainState = (WhitemanPark$`Rainfall amount (millimetres)`> 0))
+```
+Note that RainState is a boolean that outputs TRUE if there has been any rain (> 0) and FALSE if not (== 0). The beaureu of meteorology (BOM) discard any readings less than 0.2mm; as moisture/humidity can give false readings.
+
+```{r}
+# for every entry
+# write the previous entry to the current entry
+
+#for (i in 1:7){
+#  WP.lag[4+i,(i+2):nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-i]
+#}
+WP.lag$Lag1[3:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-1]
+WP.lag$Lag2[4:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-2]
+WP.lag$Lag3[5:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-3]
+WP.lag$Lag4[6:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-4]
+WP.lag$Lag5[7:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-5]
+WP.lag$Lag6[8:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-6]
+WP.lag$Lag7[9:nrow(WhitemanPark)] <- WhitemanPark$`Rainfall amount (millimetres)`[-7]
+
+# The mean of the 5th to the 11th columns
+
+# The number of missing values in a given row
+# sum(is.na(WP.lag[626,3:9]))
+# so to calculate the mean, we'd have 7-sum(is.na(WP.lag[626,3:9]))
+
+# for each row in the dataset,
+for (i in 1:nrow(WP.lag)){
+  # divide the sum of the values in the row by the number of columns - missing columns
+  #na.rm = TRUE means that NA values will be removed
+  WP.lag$MeanLag[i] <- sum(WP.lag[i,5:11],na.rm = TRUE)/(7-sum(is.na(WP.lag[i,5:11])))
+}
+
+# for each row in the dataset,
+for (i in 1:nrow(WP.lag)){
+  sort
+  # output the median of the values 
+  #na.rm = TRUE means that NA values will be removed
+  WP.lag$MedLag[i] <- median(as.numeric(WP.lag[i,5:11]),na.rm=TRUE)
+}
+```
+
+```{r}
+# turning rainstate into factors, for the glm
+WP.lag$RainState <- factor(WP.lag$RainState)
+```
+
+```{r}
+# GABES CODE
+WP.lag.clean <- WP.lag[complete.cases(WP.lag),]
+#Check for all rows where Rainfall_mm has values other than NA
+#Saves them into a new dataset
+
+#Training
+WP.lag.2014 <- WP.lag.clean[which(WP.lag.clean$Year == 2014),]
+# QUICK EDA
+# these are the rows which have an NA VALUE FOR 'TODAY'
+#WP.lag.2014 <- WP.lag.2014[-which(is.na(WP.lag.2014$Today)),]
+# Test
+WP.lag.2016 <- WP.lag.clean[which(WP.lag.clean$Year == 2016),]
+#WP.lag.2016 <- WP.lag.2016[-which(is.na(WP.lag.2016$Today)),]
+```
+
+```{r}
+
+# DONT ADD TODAY's DATA TO THE LINEAR MODEL!!! IT WILL WORK WITH 100% ACCURACY, BECAUSE 
+levels(WP.lag.2014$RainState)
+WP.lag.2014.glm <- glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag, data = WP.lag, family = binomial(logit))
+
+# NOTE: IF YOU ADD MEANLAG, ALONGSIDE LAG1 TO LAG 7, IT WILL HAVE ZERO EFFECT
+WP.lag.2014.glm <- glm(RainState ~ Day+Lag1+Lag2+Lag3+Lag4+Lag5+Lag6+MeanLag, data = WP.lag.clean, family = binomial(logit))
+WP.lag.2014.glm
+
+# exactly the same, but it adds the date parameters to the glm
+# IMPORTANT
+# Note that the month and day parameters add 12 + 31 parameters into the glm. This means that our glm will 
+WP.lag.2014.withdates.glm <- glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag + MedLag, data = WP.lag, family = binomial(logit))
+# making predictions
+WP.predict <- predict(WP.lag.2014.glm, newdata = WP.lag.2016, type = "response")
+head(WP.predict)
+# making predictions but with the date parameters
+WP.withdates.predict <- predict(WP.lag.2014.withdates.glm, newdata = WP.lag.2016, type = "response")
+head(WP.withdates.predict)
+
+# plotting ROC curve
+library(pROC)
+#square graph
+par(pty = "s")
+plot(roc(WP.lag.2016$RainState, WP.withdates.predict,legacy.axes = TRUE))
+```
+
+```{r}
+levels(WP.lag.2014$RainState)
+# using just the date to predict the next day of rain
+WP.lag.2014.glm.version2 <- glm(RainState ~ Month+Day, data = WP.lag.2014, family = binomial(logit))
+WP.withdates.predict.version2 <- predict(WP.lag.2014.glm.version2, newdata = WP.lag.2016, type = "response")
+
+# plotting ROC curve
+library(pROC)
+#square graph
+par(pty = "s")
+plot(roc(WP.lag.2016$RainState, WP.withdates.predict.version2,legacy.axes = TRUE))
+
+```
+
+
+```{r}
+# Summaries of the glms
+summary(WP.lag.2014.glm)
+#summary(WP.lag.2014.withdates.glm)
+
+# creating a confusion matrix using the last week of data
+WP.predict.class <- rep("No Rain", length(WP.lag.2014.glm))
+WP.predict.class[WP.predict > 0.5] <- "Rain" 
+#table(WP.predict.class, WP.lag.2016$RainState)
+
+# creating a confusion matrix using the date and the last week of data
+# IMPORTANT
+# Note that when adding the dates, our predictions that it won't rain when it will (Rain FALSE) are wrong more, but our True positive (Rain TRUE) is significantly larger
+# IMPORTANT
+# What is interesting is that these extra parameters don't change the accuracy of predicting when it won't rain (Both tables' first row (No rain) is 25 and 6 for False and True)
+WP.withdates.predict.class <- rep("No Rain", length(WP.lag.2014.withdates.glm))
+WP.withdates.predict.class[WP.withdates.predict > 0.5] <- "Rain" 
+#table(WP.withdates.predict.class, WP.lag.2016$RainState)
+
+# plotting ROC curve
+library(pROC)
+#square graph
+par(pty = "s")
+plot(roc(WP.lag.2016$RainState, WP.predict,legacy.axes = TRUE))
+
+# plotting with the date parameters
+par(pty = "s")
+plot(roc(WP.lag.2016$RainState, WP.withdates.predict,legacy.axes=TRUE))
+```
+
+
+```{r}
+# neuralnet
+# USING A NEURAL NETWORK WITH MULTIPLE HIDDEN LAYERS
+library(neuralnet)
+# ONLY USING THE LAST 7 DAYS
+
+# our x are the 5th to 11th elements (the last 7 days)
+# our y is the 4th element (today's weather)
+WP.lag.2014<-WP.lag.2014[complete.cases(WP.lag.2014),]
+
+#WP.nnet <- nnet(x = WP.lag.2014[,5:11], y = WP.lag.2014[,4],formula = RainState ~ Lag1+Lag2+Lag3+Lag4+Lag5+Lag6+Lag7,size = 1, maxit=1, data=WP.lag.2014)
+
+
+# AS WE ARE USING A NEURAL NETWORK, I AM ATTEMPTING TO PREDICT THE NUMERICAL RAINFALL, RATHER THAN A BINARY STATE
+
+# WP.nnet <- nnet(Today ~ Lag1+Lag2+Lag3+Lag4+Lag5+Lag6+Lag7,size = 5, maxit=10000, data=WP.lag.2014)
+
+# rep (amount of times we repeat the training process) is very important! It means that we get consistant results
+WP.neuralnet <- neuralnet(Today ~ Lag1+Lag2+Lag3+Lag4+Lag5+Lag6+Lag7+MeanLag+MedLag,data=WP.lag.2014,hidden = c(3,2),stepmax=3e+07)
+plot(WP.neuralnet)
+
+# cleaning the test data
+WP.lag.2016 <- WP.lag.2016[complete.cases(WP.lag.2016),]
+
+#WP.nnet.predict <- predict(WP.nnet,newdata=WP.lag.2016[,4])
+
+
+# computes the outputs of all neurons for specific (covariate)? vectors for a trained network
+WP.neuralnet.predict <- compute(WP.neuralnet, WP.lag.2016[,5:13])$net.result
+hist(WP.neuralnet.predict)
+#compute(WP.neuralnet, WP.lag.2016[,5:12])$net.result
+
+WP.neuralnet.class <- rep("Non-Rain", length(WP.neuralnet.predict))
+table(WP.neuralnet.predict)
+WP.neuralnet.class[WP.neuralnet.predict > 0] <- "Rain"
+#WP.neuralnet.predict
+
+# This method is 10 percent less accurate at predicing when it will rain
+# It predicts that it will rain with ~60-68% accuracy
+# as the number of hidden layers increases, the accuracy of predicting rainfall decreases.
+# The number of predicted non-rainy days stays at around 78% accuracy
+
+# THE PROBLEM IS that we are using only one hidden layer
+# more hidden layers will improve generalisation, in theory?
+# keep in mind, sinceour output is numerical (non-binary), our confusion matrix will look silly 
+table(table(WP.neuralnet.class,WP.lag.2016$Today))
+plot(table(WP.neuralnet.class, WP.lag.2016$Today))
+
+
+# plotting ROC curve
+library(pROC)
+#square graph
+par(pty = "s")
+plot(roc(WP.lag.2016$Today, WP.neuralnet.predict,legacy.axes = TRUE))
+```
+
+
+
+```{r}
+# quick glm plot attempt
+
+# maybe I could do:
+# data = WP.lag[which(WP.lag$Year == 2014),]
+levels(WP.lag$RainState)
+summary(glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag, data = WP.lag, family = binomial(logit)))
+summary(glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag, data = WP.lag.clean, family = binomial(logit)))
+```
+
+
+#IMPORTANT
+
+We can use tapply to calcualte the mean rainfall of the previous n days
+
+```{r}
+# WP.lag$LagMean <- tapply(Lag1:Lag5, mean)
+```
