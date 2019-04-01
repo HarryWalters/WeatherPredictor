@@ -123,7 +123,7 @@ WP.lag.2016 <- WP.lag.clean[which(WP.lag.clean$Year == 2016),]
 
 ```{r}
 
-# DONT ADD TODAY's DATA TO THE LINEAR MODEL!!! IT WILL WORK WITH 100% ACCURACY, BECAUSE 
+# DONT ADD TODAY's DATA TO THE LINEAR MODEL!!! WE'RE UNABLE TO MAKE PRREDICTIONS, AS IT PREDICTS WITH 100% ACCURACY; AGAINST ITSELF
 levels(WP.lag.2014$RainState)
 WP.lag.2014.glm <- glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag, data = WP.lag, family = binomial(logit))
 
@@ -237,9 +237,9 @@ WP.neuralnet.class[WP.neuralnet.predict > 0] <- "Rain"
 # as the number of hidden layers increases, the accuracy of predicting rainfall decreases.
 # The number of predicted non-rainy days stays at around 78% accuracy
 
-# THE PROBLEM IS that we are using only one hidden layer
-# more hidden layers will improve generalisation, in theory?
-# keep in mind, sinceour output is numerical (non-binary), our confusion matrix will look silly 
+# NOTE that we are using only one hidden layer
+# I suspect more hidden layers will improve generalisation
+# keep in mind, since our output is numerical (non-binary), our confusion matrix should be reformatted
 table(table(WP.neuralnet.class,WP.lag.2016$Today))
 plot(table(WP.neuralnet.class, WP.lag.2016$Today))
 
@@ -256,7 +256,7 @@ plot(roc(WP.lag.2016$Today, WP.neuralnet.predict,legacy.axes = TRUE))
 ```{r}
 # quick glm plot attempt
 
-# maybe I could do:
+# attempting:
 # data = WP.lag[which(WP.lag$Year == 2014),]
 levels(WP.lag$RainState)
 summary(glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag, data = WP.lag, family = binomial(logit)))
@@ -266,7 +266,7 @@ summary(glm(RainState ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Lag6 + Lag7 + MeanLag
 
 #IMPORTANT
 
-We can use tapply to calcualte the mean rainfall of the previous n days
+We can use tapply to calculate the mean rainfall of the previous n days
 
 ```{r}
 # WP.lag$LagMean <- tapply(Lag1:Lag5, mean)
