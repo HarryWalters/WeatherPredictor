@@ -14,14 +14,15 @@ Our data will refined, as we have missing values
 OUr data can be used to account for draughts
 
 ```{r}
-
+# You can access the equivalent data here: 
+# http://www.bom.gov.au/jsp/ncc/cdio/weatherData/av?p_nccObsCode=136&p_display_type=dailyDataFile&p_startYear=2018&p_c=-17231830&p_stn_num=009263
 # This loads the BOM data into RStudio as a .csv
 library(readr)
 WhitemanPark <- read_csv("C:/Users/Harry Walters/Desktop/Curtin/Year 2/Semester 1/STAT1003/Assignment/Whiteman Park Weather Data/IDCJAC0009_009263_1800_Data.csv")
 ```
 
 ```{r}
-# 300 missing values?! heck!!!
+# The data contain 300 missing values
 sum(is.na(WhitemanPark$`Rainfall amount (millimetres)`))
 
 # NOTE: each reading is independant of one another
